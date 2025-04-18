@@ -1,56 +1,47 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Player.InventorySystem
+public class Inventory : MonoBehaviour
 {
-    public class Inventory : MonoBehaviour
+    public static Inventory instance;
+    
+    public List<InventoryItem> items = new List<InventoryItem>();
+    
+    public delegate void OnItemChanged();
+    public OnItemChanged onItemChangedCallback;
+    
+    void Awake()
     {
-        public List<InventorySlot> slots = new List<InventorySlot>();
-        public int capacity = 20;
-
-        private void Awake()
+        if (instance != null)
         {
-            Initialize(capacity);
+            Debug.LogWarning("More than one instance of Inventory found!");
+            return;
         }
+        instance = this;
+    }
+    
+    public void Add(Item item, int count = 1)
+    {
+        // Логика добавления предмета
+        onItemChangedCallback?.Invoke();
+    }
+    
+    public void Remove(Item item, int count = 1)
+    {
+        // Логика удаления предмета
+        onItemChangedCallback?.Invoke();
+    }
+}
 
-        public void Initialize(int size)
-        {
-            slots.Clear();
-            for (int i = 0; i < size; i++)
-            {
-                slots.Add(new InventorySlot());
-            }
-        }
-
-        public bool AddItem(InventoryItem item, int amount = 1)
-        {
-            // Попробовать добавить в существующие стеки
-            foreach (var slot in slots)
-            {
-                if (!slot.IsEmpty && slot.item.itemID == item.itemID && !slot.IsFull)
-                {
-                    int canAdd = item.maxStack - slot.amount;
-                    int toAdd = Mathf.Min(amount, canAdd);
-                    slot.amount += toAdd;
-                    amount -= toAdd;
-                    
-                    if (amount <= 0) return true;
-                }
-            }
-
-            // Добавить в пустые слоты
-            foreach (var slot in slots)
-            {
-                if (slot.IsEmpty)
-                {
-                    slot.SetItem(item, Mathf.Min(amount, item.maxStack));
-                    amount -= Mathf.Min(amount, item.maxStack);
-                    
-                    if (amount <= 0) return true;
-                }
-            }
-
-            return false;
-        }
+[System.Serializable]
+public class InventoryItem
+{
+    public Item item;
+    public int count;
+    
+    public InventoryItem(Item item, int count)
+    {
+        this.item = item;
+        this.count = count;
     }
 }

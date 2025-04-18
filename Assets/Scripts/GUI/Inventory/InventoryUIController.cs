@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-using InventorySystem; // Добавляем эту директиву
+using InventorySystem;
 
 public class InventoryUIController : MonoBehaviour
 {
