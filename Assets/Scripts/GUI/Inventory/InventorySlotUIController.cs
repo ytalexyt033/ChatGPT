@@ -1,43 +1,42 @@
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using Player.InventorySystem;
 
-namespace Player.GUI
+public class InventorySlotUIController : MonoBehaviour, IPointerClickHandler
 {
-    public class InventorySlotUIController : MonoBehaviour
+    [Header("References")]
+    public Image icon;
+    public Text amountText;
+    
+    private InventorySlot slot;
+
+    public void Initialize(InventorySlot slot)
     {
-        [SerializeField] private Image _icon;
-        [SerializeField] private Text _countText;
-        
-        private InventoryUIController _inventoryUI;
-        private int _slotIndex;
+        this.slot = slot;
+        UpdateUI();
+    }
 
-        public void Initialize(InventoryUIController ui, int index)
+    public void UpdateUI()
+    {
+        if (slot == null || slot.IsEmpty)
         {
-            _inventoryUI = ui;
-            _slotIndex = index;
-            UpdateSlot(null, 0);
+            icon.sprite = null;
+            icon.enabled = false;
+            amountText.text = "";
         }
-
-        public void UpdateSlot(InventoryItem item, int count)
+        else
         {
-            if (item == null)
-            {
-                _icon.sprite = null;
-                _icon.enabled = false;
-                _countText.text = "";
-            }
-            else
-            {
-                _icon.sprite = item.icon;
-                _icon.enabled = true;
-                _countText.text = count > 1 ? count.ToString() : "";
-            }
+            icon.sprite = slot.item.icon;
+            icon.enabled = true;
+            amountText.text = slot.amount > 1 ? slot.amount.ToString() : "";
         }
+    }
 
-        public void OnQuickMoveClicked()
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right)
         {
-            _inventoryUI.HandleQuickMove(_slotIndex);
+            Debug.Log($"Used item: {slot.item.itemName}");
         }
     }
 }

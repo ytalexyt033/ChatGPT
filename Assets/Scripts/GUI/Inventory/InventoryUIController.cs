@@ -1,46 +1,50 @@
 using UnityEngine;
 using Player.InventorySystem;
 
-namespace Player.GUI.Inventory
+public class InventoryUIController : MonoBehaviour
 {
-    public class InventoryUIController : MonoBehaviour
+    [Header("References")]
+    public InventorySystem inventorySystem; // Изменено с Inventory на InventorySystem
+    public GameObject inventoryPanel;
+    public Transform slotsParent;
+    
+    [Header("Settings")]
+    public KeyCode toggleKey = KeyCode.Tab;
+    
+    private bool isOpen;
+
+    private void Awake()
     {
-        [SerializeField] private Transform slotsParent;
-        [SerializeField] private InventorySlotUI slotPrefab;
-        
-        private Inventory _inventory;
-        private InventorySlotUI[] _slots;
+        InitializeUI();
+        ToggleInventory(false);
+    }
 
-        public void Initialize(Inventory inventory)
+    private void Update()
+    {
+        if (Input.GetKeyDown(toggleKey))
         {
-            _inventory = inventory;
-            CreateSlots();
-            UpdateUI();
-            _inventory.OnInventoryChanged += UpdateUI;
+            ToggleInventory();
+        }
+    }
+
+    private void InitializeUI()
+    {
+        foreach (Transform child in slotsParent)
+        {
+            Destroy(child.gameObject);
         }
 
-        private void CreateSlots()
+        for (int i = 0; i < inventorySystem.slots.Count; i++)
         {
-            _slots = new InventorySlotUI[_inventory.Size];
-            for (int i = 0; i < _inventory.Size; i++)
-            {
-                var slot = Instantiate(slotPrefab, slotsParent);
-                slot.Initialize(this, i);
-                _slots[i] = slot;
-            }
+            var slotUI = Instantiate(inventorySystem.slotUIPrefab, slotsParent);
+            slotUI.Initialize(inventorySystem.slots[i]);
         }
+    }
 
-        public void UpdateUI()
-        {
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                _slots[i].UpdateSlot(_inventory.GetItem(i), _inventory.GetCount(i));
-            }
-        }
-
-        public void HandleQuickMove(int slotIndex)
-        {
-            // Реализация быстрого перемещения
-        }
+    public void ToggleInventory()
+    {
+        isOpen = !isOpen;
+        inventoryPanel.SetActive(isOpen);
+        Cursor.lockState = isOpen ? CursorLockMode.None : CursorLockMode.Locked;
     }
 }
