@@ -1,16 +1,16 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 public class InventoryUIController : MonoBehaviour
 {
-    public GameObject inventoryPanel;
     public Transform itemsParent;
-    InventorySlotUIController[] slots;
+    InventorySlotUI[] slots;
 
     void Start()
     {
         Inventory.instance.onItemChangedCallback += UpdateUI;
-        slots = itemsParent.GetComponentsInChildren<InventorySlotUIController>();
+        slots = itemsParent.GetComponentsInChildren<InventorySlotUI>();
     }
 
     void UpdateUI()
@@ -18,16 +18,9 @@ public class InventoryUIController : MonoBehaviour
         for (int i = 0; i < slots.Length; i++)
         {
             if (i < Inventory.instance.items.Count)
-            {
-                slots[i].UpdateSlot(
-                    Inventory.instance.items[i].item,
-                    Inventory.instance.items[i].count
-                );
-            }
+                slots[i].AddItem(Inventory.instance.items[i]);
             else
-            {
-                slots[i].UpdateSlot(null, 0);
-            }
+                slots[i].ClearSlot();
         }
     }
 }

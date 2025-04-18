@@ -4,20 +4,24 @@ using UnityEngine;
 public class Inventory : MonoBehaviour
 {
     public static Inventory instance;
-    
+    public int capacity = 20;
     public List<InventoryItem> items = new List<InventoryItem>();
     
     public delegate void OnItemChanged();
     public OnItemChanged onItemChangedCallback;
-    
+
     void Awake()
     {
-        instance = this;
+        if (instance == null)
+            instance = this;
+        else
+            Destroy(gameObject);
     }
-    
-    public void Add(Item item, int count = 1)
+
+    public bool AddItem(Item item, int count = 1)
     {
-        items.Add(new InventoryItem(item, count));
+        // Логика добавления предмета
         onItemChangedCallback?.Invoke();
+        return true;
     }
 }

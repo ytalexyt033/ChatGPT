@@ -1,53 +1,27 @@
 using UnityEngine;
 using UnityEngine.UI;
-using Player.InventorySystem;
 
 public class InventoryUI : MonoBehaviour
 {
-    [Header("References")]
-    public GameObject inventoryPanel;
-    public Transform slotsParent;
-    public InventorySlotUI slotPrefab;
-    
-    [Header("Settings")]
-    public KeyCode toggleKey = KeyCode.Tab;
-    
-    private Inventory inventory;
-    private bool isOpen;
-    
-    public bool IsOpen => isOpen;
+    public Transform itemsParent;
+    public GameObject inventoryUI;
 
-    private void Awake()
+    InventorySlotUI[] slots;
+
+    void Start()
     {
-        inventory = GetComponent<Inventory>();
-        InitializeUI();
+        Inventory.instance.slots = new List<InventorySlot>(capacity);
+        slots = itemsParent.GetComponentsInChildren<InventorySlotUI>();
     }
 
-    private void Update()
+    void UpdateUI()
     {
-        if (Input.GetKeyDown(toggleKey))
+        for (int i = 0; i < slots.Length; i++)
         {
-            ToggleInventory();
+            if (i < Inventory.instance.slots.Count)
+                slots[i].AddItem(Inventory.instance.slots[i].item);
+            else
+                slots[i].ClearSlot();
         }
-    }
-
-    private void InitializeUI()
-    {
-        foreach (Transform child in slotsParent)
-        {
-            Destroy(child.gameObject);
-        }
-
-        for (int i = 0; i < inventory.capacity; i++)
-        {
-            Instantiate(slotPrefab, slotsParent).Initialize(inventory.slots[i]);
-        }
-    }
-
-    public void ToggleInventory()
-    {
-        isOpen = !isOpen;
-        inventoryPanel.SetActive(isOpen);
-        Cursor.lockState = isOpen ? CursorLockMode.None : CursorLockMode.Locked;
     }
 }

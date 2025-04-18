@@ -1,43 +1,26 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
-using Player.InventorySystem;
+using TMPro;
 
-public class InventorySlotUI : MonoBehaviour, IPointerClickHandler
+public class InventorySlotUI : MonoBehaviour
 {
-    [Header("References")]
     public Image icon;
-    public Text amountText;
-    
-    private InventorySlot slot;
+    public TMP_Text countText;
+    public InventoryItem item;
 
-    public void Initialize(InventorySlot slot)
+    public void AddItem(InventoryItem newItem)
     {
-        this.slot = slot;
-        UpdateUI();
+        item = newItem;
+        icon.sprite = item.item.icon;
+        icon.enabled = true;
+        countText.text = item.count > 1 ? item.count.ToString() : "";
     }
 
-    public void UpdateUI()
+    public void ClearSlot()
     {
-        if (slot.IsEmpty)
-        {
-            icon.sprite = null;
-            icon.enabled = false;
-            amountText.text = "";
-        }
-        else
-        {
-            icon.sprite = slot.item.icon;
-            icon.enabled = true;
-            amountText.text = slot.amount > 1 ? slot.amount.ToString() : "";
-        }
-    }
-
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        if (eventData.button == PointerEventData.InputButton.Right)
-        {
-            Debug.Log($"Used {slot.item.itemName}");
-        }
+        item = null;
+        icon.sprite = null;
+        icon.enabled = false;
+        countText.text = "";
     }
 }

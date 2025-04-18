@@ -1,16 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Player.InventorySystem
+public class ItemDatabase : MonoBehaviour
 {
-    [CreateAssetMenu(fileName = "ItemDatabase", menuName = "Inventory/Item Database")]
-    public class ItemDatabase : ScriptableObject
-    {
-        public List<InventoryItem> items = new List<InventoryItem>();
+    public List<Item> items = new List<Item>();
 
-        public InventoryItem GetItem(string itemId)
-        {
-            return items.Find(item => item.itemID == itemId);
-        }
+    public Item GetItemByID(string itemID)
+    {
+        return items.Find(item => item.itemID == itemID);
     }
 }
