@@ -20,7 +20,10 @@ public class Inventory : MonoBehaviour
 
     public bool AddItem(Item item, int count = 1)
     {
-        // Логика добавления предмета
+        if (items.Count >= capacity)
+            return false;
+
+        items.Add(new InventoryItem(item, count));
         onItemChangedCallback?.Invoke();
         return true;
     }

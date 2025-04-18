@@ -1,20 +1,15 @@
 using UnityEngine;
 
-namespace Player.InventorySystem
+public class ItemManager : MonoBehaviour
 {
-    public class ItemManager : MonoBehaviour
+    public ItemDatabase database;
+    
+    public void AddItemToInventory(string itemID)
     {
-        public ItemDatabase itemDatabase;
-
-        public InventoryItem CreateItem(string itemId)
+        Item item = database.GetItemByID(itemID);
+        if (item != null)
         {
-            InventoryItem template = itemDatabase.GetItem(itemId);
-            if (template == null)
-            {
-                Debug.LogError($"Item {itemId} not found in database!");
-                return null;
-            }
-            return new InventoryItem(template);
+            Inventory.instance.AddItem(item);
         }
     }
 }
