@@ -1,10 +1,10 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(CharacterController), RequireComponent(typeof(PlayerVitals))]
+[RequireComponent(typeof(CharacterController)), RequireComponent(typeof(PlayerVitals))] // Фикс: добавлены закрывающие скобки
 public class PlayerMovement : MonoBehaviour
 {
-    // Serialized Fields
+    // Остальной код без изменений...
     [Header("Movement Settings")]
     [SerializeField] private float walkSpeed = 5f;
     [SerializeField] private float runSpeed = 10f;
