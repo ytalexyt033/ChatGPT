@@ -1,10 +1,8 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(CharacterController)), RequireComponent(typeof(PlayerVitals))] // Фикс: добавлены закрывающие скобки
+[RequireComponent(typeof(CharacterController)), RequireComponent(typeof(PlayerVitals))]
 public class PlayerMovement : MonoBehaviour
 {
-    // Остальной код без изменений...
     [Header("Movement Settings")]
     [SerializeField] private float walkSpeed = 5f;
     [SerializeField] private float runSpeed = 10f;
@@ -18,76 +16,91 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private Transform playerCamera;
     [SerializeField] private float mouseSensitivity = 2f;
     [SerializeField] private float maxVerticalAngle = 85f;
+    [SerializeField] private float cameraStandHeight = 1.6f;
+    [SerializeField] private float cameraCrouchHeight = 0.8f;
 
-    [Header("References")]
-    [SerializeField] private InventoryUI inventoryUI;
-    
-    // Private Variables
+    [Header("Zoom Settings")]
+    [SerializeField] private float zoomFOV = 30f;
+    [SerializeField] private float zoomSpeed = 10f;
+
+    [Header("Input")]
+    [SerializeField] private InputActions inputActions;
+
     private CharacterController _controller;
     private PlayerVitals _vitals;
-    private InputActions _input;
-    private Vector2 _moveInput;
-    private Vector2 _lookInput;
+    private Camera _mainCamera;
+    private float _defaultFOV;
     private float _verticalRotation;
     private Vector3 _velocity;
     private bool _isGrounded;
     private bool _isCrouching;
-
-    // Properties
-    public bool IsRunning { get; private set; }
-    public bool IsInventoryOpen => inventoryUI.IsOpen;
+    private bool _isZooming;
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
         _vitals = GetComponent<PlayerVitals>();
-        _input = new InputActions();
+        _mainCamera = Camera.main;
+        _defaultFOV = _mainCamera.fieldOfView;
 
-        Cursor.lockState = CursorLockMode.Locked;
-        
         if (playerCamera == null)
-            playerCamera = Camera.main.transform;
+            playerCamera = _mainCamera.transform;
+
+        inputActions.EnableAll();
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
-    private void OnEnable() => _input.Enable();
-    private void OnDisable() => _input.Disable();
+    private void OnDestroy()
+    {
+        inputActions.DisableAll();
+    }
 
     private void Update()
     {
-        if (IsInventoryOpen) return;
-        
+        HandleGroundCheck();
         HandleMovement();
         HandleLook();
         HandleJump();
+        HandleCrouch();
+        HandleZoom();
+        HandleInventoryToggle();
         ApplyGravity();
+    }
+
+    private void HandleGroundCheck()
+    {
+        _isGrounded = Physics.CheckSphere(
+            transform.position + Vector3.down * (_controller.height / 2 - groundCheckRadius),
+            groundCheckRadius,
+            groundMask
+        );
     }
 
     private void HandleMovement()
     {
-        _moveInput = _input.Player.Move.ReadValue<Vector2>();
-        _isCrouching = _input.Player.Crouch.ReadValue<float>() > 0.5f;
-        IsRunning = _input.Player.Run.ReadValue<float>() > 0.5f;
+        Vector2 moveInput = inputActions.move.ReadValue<Vector2>();
+        Vector3 moveDirection = transform.right * moveInput.x + transform.forward * moveInput.y;
 
-        Vector3 move = transform.right * _moveInput.x + transform.forward * _moveInput.y;
-        float speed = _isCrouching ? crouchSpeed : IsRunning ? runSpeed : walkSpeed;
-        
-        _controller.Move(move * (speed * Time.deltaTime));
+        float currentSpeed = _isCrouching ? crouchSpeed : 
+                           inputActions.run.IsPressed() ? runSpeed : walkSpeed;
+
+        _controller.Move(moveDirection * (currentSpeed * Time.deltaTime));
     }
 
     private void HandleLook()
     {
-        _lookInput = _input.Player.Look.ReadValue<Vector2>();
-        
-        _verticalRotation -= _lookInput.y * mouseSensitivity;
+        Vector2 lookInput = inputActions.look.ReadValue<Vector2>() * mouseSensitivity;
+
+        _verticalRotation -= lookInput.y;
         _verticalRotation = Mathf.Clamp(_verticalRotation, -maxVerticalAngle, maxVerticalAngle);
-        
+
         playerCamera.localEulerAngles = Vector3.right * _verticalRotation;
-        transform.Rotate(Vector3.up * (_lookInput.x * mouseSensitivity));
+        transform.Rotate(Vector3.up * lookInput.x);
     }
 
     private void HandleJump()
     {
-        if (_input.Player.Jump.triggered && _isGrounded && !_isCrouching)
+        if (inputActions.jump.triggered && _isGrounded && !_isCrouching)
         {
             if (_vitals.TryUseJumpStamina())
             {
@@ -96,14 +109,39 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    private void HandleCrouch()
+    {
+        _isCrouching = inputActions.crouch.IsPressed();
+        float targetHeight = _isCrouching ? cameraCrouchHeight : cameraStandHeight;
+        playerCamera.localPosition = Vector3.up * Mathf.Lerp(
+            playerCamera.localPosition.y, 
+            targetHeight, 
+            Time.deltaTime * 10f
+        );
+    }
+
+    private void HandleZoom()
+    {
+        _isZooming = inputActions.zoom.IsPressed();
+        float targetFOV = _isZooming ? zoomFOV : _defaultFOV;
+        _mainCamera.fieldOfView = Mathf.Lerp(
+            _mainCamera.fieldOfView, 
+            targetFOV, 
+            Time.deltaTime * zoomSpeed
+        );
+    }
+
+    private void HandleInventoryToggle()
+    {
+        if (inputActions.inventory.triggered)
+        {
+            bool shouldLockCursor = Cursor.lockState == CursorLockMode.Locked;
+            Cursor.lockState = shouldLockCursor ? CursorLockMode.None : CursorLockMode.Locked;
+        }
+    }
+
     private void ApplyGravity()
     {
-        _isGrounded = Physics.CheckSphere(
-            transform.position + Vector3.down * (_controller.height / 2 - groundCheckRadius),
-            groundCheckRadius,
-            groundMask
-        );
-
         if (_isGrounded && _velocity.y < 0)
         {
             _velocity.y = -2f;
@@ -112,7 +150,6 @@ public class PlayerMovement : MonoBehaviour
         {
             _velocity.y -= gravity * Time.deltaTime;
         }
-        
         _controller.Move(_velocity * Time.deltaTime);
     }
 
