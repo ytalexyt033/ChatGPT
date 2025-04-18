@@ -1,54 +1,53 @@
 using UnityEngine;
+using UnityEngine.UI;
 using Player.InventorySystem;
 
-namespace Player.GUI
+public class InventoryUI : MonoBehaviour
 {
-    public class InventoryUI : MonoBehaviour
+    [Header("References")]
+    public GameObject inventoryPanel;
+    public Transform slotsParent;
+    public InventorySlotUI slotPrefab;
+    
+    [Header("Settings")]
+    public KeyCode toggleKey = KeyCode.Tab;
+    
+    private Inventory inventory;
+    private bool isOpen;
+    
+    public bool IsOpen => isOpen;
+
+    private void Awake()
     {
-        [SerializeField] private Transform _slotsParent;
-        [SerializeField] private InventorySlotUI _slotPrefab;
-        [SerializeField] private HotbarSystem _hotbarSystem;
+        inventory = GetComponent<Inventory>();
+        InitializeUI();
+    }
 
-        private Inventory _inventory;
-        private InventorySlotUI[] _slots;
-
-        public void Initialize(Inventory inventory)
+    private void Update()
+    {
+        if (Input.GetKeyDown(toggleKey))
         {
-            _inventory = inventory;
-            CreateSlots();
-            UpdateUI();
-            _inventory.OnInventoryChanged += UpdateUI;
+            ToggleInventory();
+        }
+    }
+
+    private void InitializeUI()
+    {
+        foreach (Transform child in slotsParent)
+        {
+            Destroy(child.gameObject);
         }
 
-        private void CreateSlots()
+        for (int i = 0; i < inventory.capacity; i++)
         {
-            _slots = new InventorySlotUI[_inventory.Size];
-            for (int i = 0; i < _inventory.Size; i++)
-            {
-                InventorySlotUI slot = Instantiate(_slotPrefab, _slotsParent);
-                slot.Initialize(this, i);
-                _slots[i] = slot;
-            }
+            Instantiate(slotPrefab, slotsParent).Initialize(inventory.slots[i]);
         }
+    }
 
-        public void UpdateUI()
-        {
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                _slots[i].UpdateSlot(_inventory.GetItem(i), _inventory.GetCount(i));
-            }
-        }
-
-        public void HandleQuickMove(int slotIndex)
-        {
-            if (_hotbarSystem == null) return;
-            
-            InventoryItem item = _inventory.GetItem(slotIndex);
-            if (item != null)
-            {
-                _hotbarSystem.AddItem(item, _inventory.GetCount(slotIndex));
-                _inventory.RemoveItem(slotIndex, _inventory.GetCount(slotIndex));
-            }
-        }
+    public void ToggleInventory()
+    {
+        isOpen = !isOpen;
+        inventoryPanel.SetActive(isOpen);
+        Cursor.lockState = isOpen ? CursorLockMode.None : CursorLockMode.Locked;
     }
 }

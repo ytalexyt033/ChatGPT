@@ -1,46 +1,43 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using Player.InventorySystem;
 
-namespace Player.GUI
+public class InventorySlotUI : MonoBehaviour, IPointerClickHandler
 {
-    public class InventorySlotUI : MonoBehaviour
+    [Header("References")]
+    public Image icon;
+    public Text amountText;
+    
+    private InventorySlot slot;
+
+    public void Initialize(InventorySlot slot)
     {
-        [SerializeField] private Image icon;
-        [SerializeField] private Text countText;
-        
-        private InventoryUIController inventoryUI;
-        private int slotIndex;
+        this.slot = slot;
+        UpdateUI();
+    }
 
-        public void Initialize(InventoryUIController ui, int index)
-        {
-            inventoryUI = ui;
-            slotIndex = index;
-            ClearSlot();
-        }
-
-        public void UpdateSlot(InventoryItem item, int count)
-        {
-            if (item == null)
-            {
-                ClearSlot();
-                return;
-            }
-
-            icon.sprite = item.icon;
-            icon.enabled = true;
-            countText.text = count > 1 ? count.ToString() : "";
-        }
-
-        private void ClearSlot()
+    public void UpdateUI()
+    {
+        if (slot.IsEmpty)
         {
             icon.sprite = null;
             icon.enabled = false;
-            countText.text = "";
+            amountText.text = "";
         }
-
-        public void OnQuickMoveClicked()
+        else
         {
-            inventoryUI.HandleQuickMove(slotIndex);
+            icon.sprite = slot.item.icon;
+            icon.enabled = true;
+            amountText.text = slot.amount > 1 ? slot.amount.ToString() : "";
+        }
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right)
+        {
+            Debug.Log($"Used {slot.item.itemName}");
         }
     }
 }
