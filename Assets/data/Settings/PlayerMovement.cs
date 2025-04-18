@@ -1,93 +1,127 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(CharacterController), RequireComponent(typeof(PlayerVitals))]
 public class PlayerMovement : MonoBehaviour
 {
+    // Serialized Fields
     [Header("Movement Settings")]
-    public float walkSpeed = 5f;
-    public float runSpeed = 8f;
-    public float crouchSpeed = 2.5f;
-    public float jumpForce = 7f;
-    public float gravity = 20f;
-    public float groundCheckDistance = 0.2f;
+    [SerializeField] private float walkSpeed = 5f;
+    [SerializeField] private float runSpeed = 10f;
+    [SerializeField] private float crouchSpeed = 2.5f;
+    [SerializeField] private float jumpForce = 8f;
+    [SerializeField] private float gravity = 30f;
+    [SerializeField] private float groundCheckRadius = 0.3f;
+    [SerializeField] private LayerMask groundMask;
+
+    [Header("Camera Settings")]
+    [SerializeField] private Transform playerCamera;
+    [SerializeField] private float mouseSensitivity = 2f;
+    [SerializeField] private float maxVerticalAngle = 85f;
 
     [Header("References")]
-    public InputSettings inputSettings;
-    public Transform cameraTransform;
-    public LayerMask groundLayer;
-
+    [SerializeField] private InventoryUI inventoryUI;
+    
+    // Private Variables
     private CharacterController _controller;
+    private PlayerVitals _vitals;
+    private InputActions _input;
+    private Vector2 _moveInput;
+    private Vector2 _lookInput;
+    private float _verticalRotation;
     private Vector3 _velocity;
-    private float _baseHeight;
     private bool _isGrounded;
-    private float _rotationX;
+    private bool _isCrouching;
+
+    // Properties
+    public bool IsRunning { get; private set; }
+    public bool IsInventoryOpen => inventoryUI.IsOpen;
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
-        _baseHeight = _controller.height;
+        _vitals = GetComponent<PlayerVitals>();
+        _input = new InputActions();
+
         Cursor.lockState = CursorLockMode.Locked;
+        
+        if (playerCamera == null)
+            playerCamera = Camera.main.transform;
     }
+
+    private void OnEnable() => _input.Enable();
+    private void OnDisable() => _input.Disable();
 
     private void Update()
     {
-        HandleGroundCheck();
+        if (IsInventoryOpen) return;
+        
         HandleMovement();
+        HandleLook();
         HandleJump();
-        HandleCrouch();
-        HandleMouseLook();
         ApplyGravity();
-    }
-
-    private void HandleGroundCheck()
-    {
-        Vector3 spherePos = transform.position + Vector3.down * (_controller.height / 2 - groundCheckDistance);
-        _isGrounded = Physics.CheckSphere(spherePos, groundCheckDistance, groundLayer);
     }
 
     private void HandleMovement()
     {
-        Vector2 input = new Vector2(
-            Input.GetAxis(inputSettings.horizontalAxis),
-            Input.GetAxis(inputSettings.verticalAxis)
-        ).normalized;
+        _moveInput = _input.Player.Move.ReadValue<Vector2>();
+        _isCrouching = _input.Player.Crouch.ReadValue<float>() > 0.5f;
+        IsRunning = _input.Player.Run.ReadValue<float>() > 0.5f;
 
-        Vector3 move = transform.TransformDirection(new Vector3(input.x, 0, input.y));
-        float speed = Input.GetKey(inputSettings.crouchKey) ? crouchSpeed : 
-                     Input.GetKey(inputSettings.runKey) ? runSpeed : walkSpeed;
+        Vector3 move = transform.right * _moveInput.x + transform.forward * _moveInput.y;
+        float speed = _isCrouching ? crouchSpeed : IsRunning ? runSpeed : walkSpeed;
+        
+        _controller.Move(move * (speed * Time.deltaTime));
+    }
 
-        _controller.Move(move * speed * Time.deltaTime);
+    private void HandleLook()
+    {
+        _lookInput = _input.Player.Look.ReadValue<Vector2>();
+        
+        _verticalRotation -= _lookInput.y * mouseSensitivity;
+        _verticalRotation = Mathf.Clamp(_verticalRotation, -maxVerticalAngle, maxVerticalAngle);
+        
+        playerCamera.localEulerAngles = Vector3.right * _verticalRotation;
+        transform.Rotate(Vector3.up * (_lookInput.x * mouseSensitivity));
     }
 
     private void HandleJump()
     {
-        if (_isGrounded && Input.GetKeyDown(inputSettings.jumpKey) && !Input.GetKey(inputSettings.crouchKey))
+        if (_input.Player.Jump.triggered && _isGrounded && !_isCrouching)
         {
-            _velocity.y = Mathf.Sqrt(jumpForce * 2f * gravity);
+            if (_vitals.TryUseJumpStamina())
+            {
+                _velocity.y = Mathf.Sqrt(jumpForce * 2f * gravity);
+            }
         }
-    }
-
-    private void HandleCrouch()
-    {
-        bool wantCrouch = Input.GetKey(inputSettings.crouchKey);
-        float targetHeight = wantCrouch ? _baseHeight * 0.5f : _baseHeight;
-        _controller.height = Mathf.Lerp(_controller.height, targetHeight, 10f * Time.deltaTime);
-    }
-
-    private void HandleMouseLook()
-    {
-        _rotationX -= Input.GetAxis(inputSettings.mouseYAxis) * 2f;
-        _rotationX = Mathf.Clamp(_rotationX, -85f, 85f);
-        cameraTransform.localEulerAngles = Vector3.right * _rotationX;
-        transform.Rotate(Vector3.up * Input.GetAxis(inputSettings.mouseXAxis) * 2f);
     }
 
     private void ApplyGravity()
     {
+        _isGrounded = Physics.CheckSphere(
+            transform.position + Vector3.down * (_controller.height / 2 - groundCheckRadius),
+            groundCheckRadius,
+            groundMask
+        );
+
         if (_isGrounded && _velocity.y < 0)
+        {
             _velocity.y = -2f;
+        }
+        else
+        {
+            _velocity.y -= gravity * Time.deltaTime;
+        }
         
-        _velocity.y -= gravity * Time.deltaTime;
         _controller.Move(_velocity * Time.deltaTime);
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(
+            transform.position + Vector3.down * (_controller.height / 2 - groundCheckRadius),
+            groundCheckRadius
+        );
     }
 }
