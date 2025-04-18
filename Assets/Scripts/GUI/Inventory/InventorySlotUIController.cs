@@ -1,42 +1,24 @@
 using UnityEngine;
-using UnityEngine.EventSystems;
-using Player.InventorySystem;
+using UnityEngine.UI;
 
-public class InventorySlotUIController : MonoBehaviour, IPointerClickHandler
+public class InventorySlotUIController : MonoBehaviour
 {
-    [Header("References")]
     public Image icon;
-    public Text amountText;
+    public Text countText;
     
-    private InventorySlot slot;
-
-    public void Initialize(InventorySlot slot)
+    public void UpdateSlot(Item item, int count)
     {
-        this.slot = slot;
-        UpdateUI();
-    }
-
-    public void UpdateUI()
-    {
-        if (slot == null || slot.IsEmpty)
+        if (item != null)
         {
-            icon.sprite = null;
-            icon.enabled = false;
-            amountText.text = "";
+            icon.sprite = item.icon;
+            icon.enabled = true;
+            countText.text = count.ToString();
+            countText.enabled = count > 1;
         }
         else
         {
-            icon.sprite = slot.item.icon;
-            icon.enabled = true;
-            amountText.text = slot.amount > 1 ? slot.amount.ToString() : "";
-        }
-    }
-
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        if (eventData.button == PointerEventData.InputButton.Right)
-        {
-            Debug.Log($"Used item: {slot.item.itemName}");
+            icon.enabled = false;
+            countText.enabled = false;
         }
     }
 }

@@ -1,50 +1,35 @@
 using UnityEngine;
-using Player.InventorySystem;
+using UnityEngine.UI;
+using InventorySystem; // Добавляем эту директиву
 
 public class InventoryUIController : MonoBehaviour
 {
-    [Header("References")]
-    public InventorySystem inventorySystem; // Изменено с Inventory на InventorySystem
     public GameObject inventoryPanel;
-    public Transform slotsParent;
-    
-    [Header("Settings")]
-    public KeyCode toggleKey = KeyCode.Tab;
-    
-    private bool isOpen;
+    public Transform itemsParent;
+    public InventorySlotUIController[] slots;
 
-    private void Awake()
+    private Inventory inventory;
+
+    void Start()
     {
-        InitializeUI();
-        ToggleInventory(false);
+        inventory = Inventory.instance;
+        inventory.onItemChangedCallback += UpdateUI;
+        
+        slots = itemsParent.GetComponentsInChildren<InventorySlotUIController>();
     }
 
-    private void Update()
+    void UpdateUI()
     {
-        if (Input.GetKeyDown(toggleKey))
+        for (int i = 0; i < slots.Length; i++)
         {
-            ToggleInventory();
+            if (i < inventory.items.Count)
+            {
+                slots[i].UpdateSlot(inventory.items[i].item, inventory.items[i].count);
+            }
+            else
+            {
+                slots[i].UpdateSlot(null, 0);
+            }
         }
-    }
-
-    private void InitializeUI()
-    {
-        foreach (Transform child in slotsParent)
-        {
-            Destroy(child.gameObject);
-        }
-
-        for (int i = 0; i < inventorySystem.slots.Count; i++)
-        {
-            var slotUI = Instantiate(inventorySystem.slotUIPrefab, slotsParent);
-            slotUI.Initialize(inventorySystem.slots[i]);
-        }
-    }
-
-    public void ToggleInventory()
-    {
-        isOpen = !isOpen;
-        inventoryPanel.SetActive(isOpen);
-        Cursor.lockState = isOpen ? CursorLockMode.None : CursorLockMode.Locked;
     }
 }
