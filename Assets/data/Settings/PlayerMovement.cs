@@ -3,26 +3,23 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movement Settings")]
+    [Header("Movement")]
     public float walkSpeed = 5f;
     public float runSpeed = 10f;
     public float crouchSpeed = 2.5f;
     public float jumpForce = 8f;
-    public float gravity = 50f;
-
-    [Header("Camera Settings")]
-    public Transform playerCamera;
+    public float gravity = 20f;
     public float mouseSensitivity = 2f;
     public float maxVerticalAngle = 85f;
-    public float cameraStandY = 1.6f;
-    public float cameraCrouchY = 0.8f;
-    public float crouchTransitionSpeed = 8f;
 
-    [Header("Crouch Settings")]
+    [Header("Crouch")]
     public float crouchHeight = 1f;
     public float standHeight = 2f;
+    public float cameraStandY = 1.6f;
+    public float cameraCrouchY = 0.8f;
 
     private CharacterController _controller;
+    private Transform _camera;
     private Vector3 _velocity;
     private float _verticalRotation;
     private bool _isCrouching;
@@ -30,35 +27,29 @@ public class PlayerMovement : MonoBehaviour
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
-        if (playerCamera == null)
-            playerCamera = Camera.main.transform;
-        
+        _camera = Camera.main.transform;
         Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
     }
 
     private void Update()
     {
-        if (InventoryUI.Instance != null && InventoryUI.Instance.IsInventoryOpen)
-        {
-            _velocity.y = 0;
-            return;
-        }
+        if (InventoryUI.Instance?.IsInventoryOpen == true) return;
 
         HandleMouseLook();
         HandleMovement();
         HandleCrouch();
         ApplyGravity();
-        UpdateCameraPosition();
+        UpdateCameraHeight();
     }
 
     private void HandleMouseLook()
     {
-        _verticalRotation -= Input.GetAxis("Mouse Y") * mouseSensitivity;
-        _verticalRotation = Mathf.Clamp(_verticalRotation, -maxVerticalAngle, maxVerticalAngle);
-        playerCamera.localEulerAngles = Vector3.right * _verticalRotation;
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
+        transform.Rotate(Vector3.up * mouseX);
 
-        transform.Rotate(Vector3.up * Input.GetAxis("Mouse X") * mouseSensitivity);
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        _verticalRotation = Mathf.Clamp(_verticalRotation - mouseY, -maxVerticalAngle, maxVerticalAngle);
+        _camera.localEulerAngles = Vector3.right * _verticalRotation;
     }
 
     private void HandleMovement()
@@ -79,48 +70,37 @@ public class PlayerMovement : MonoBehaviour
         {
             _isCrouching = true;
             _controller.height = crouchHeight;
-            _controller.center = new Vector3(0, crouchHeight / 2, 0);
         }
-        if (Input.GetKeyUp(PlayerController.Instance.crouchKey))
+        else if (Input.GetKeyUp(PlayerController.Instance.crouchKey))
         {
             _isCrouching = false;
             _controller.height = standHeight;
-            _controller.center = new Vector3(0, standHeight / 2, 0);
         }
     }
 
-    public bool Jump()
+    private void UpdateCameraHeight()
+    {
+        float targetY = _isCrouching ? cameraCrouchY : cameraStandY;
+        Vector3 camPos = _camera.localPosition;
+        camPos.y = Mathf.Lerp(camPos.y, targetY, Time.deltaTime * 10f);
+        _camera.localPosition = camPos;
+    }
+
+    public void Jump()
     {
         if (_controller.isGrounded && !_isCrouching)
         {
             _velocity.y = Mathf.Sqrt(jumpForce * 2f * gravity);
-            return true;
         }
-        return false;
     }
 
     private void ApplyGravity()
     {
         if (_controller.isGrounded && _velocity.y < 0)
-        {
             _velocity.y = -0.1f;
-        }
         else
-        {
             _velocity.y -= gravity * Time.deltaTime;
-        }
 
         _controller.Move(_velocity * Time.deltaTime);
-    }
-
-    private void UpdateCameraPosition()
-    {
-        float targetY = _isCrouching ? cameraCrouchY : cameraStandY;
-        Vector3 targetPos = new Vector3(transform.position.x, 
-                                      transform.position.y + targetY, 
-                                      transform.position.z);
-        playerCamera.position = Vector3.Lerp(playerCamera.position, 
-                                           targetPos, 
-                                           crouchTransitionSpeed * Time.deltaTime);
     }
 }

@@ -8,23 +8,45 @@ public class Hotbar : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
     }
 
     private void Update()
     {
-        HandleSelection();
+        HandleKeyboardInput();
+        HandleMouseScroll();
     }
 
-    private void HandleSelection()
+    private void HandleKeyboardInput()
     {
         for (int i = 0; i < size; i++)
+        {
             if (Input.GetKeyDown((i + 1).ToString()))
+            {
                 CurrentSlot = i;
+                return;
+            }
+        }
+    }
 
+    private void HandleMouseScroll()
+    {
         float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (scroll != 0)
-            CurrentSlot = (CurrentSlot + (scroll > 0 ? -1 : 1) + size) % size;
+        if (scroll > 0) ChangeSlot(-1);
+        else if (scroll < 0) ChangeSlot(1);
+    }
+
+    public void ChangeSlot(int direction)
+    {
+        CurrentSlot = (CurrentSlot + direction + size) % size;
     }
 }
