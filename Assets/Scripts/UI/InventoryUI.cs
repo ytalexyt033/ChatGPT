@@ -8,15 +8,28 @@ public class InventoryUI : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        inventoryPanel.SetActive(false);
     }
 
     public void ToggleInventory()
     {
         IsInventoryOpen = !IsInventoryOpen;
         inventoryPanel.SetActive(IsInventoryOpen);
+        
         Cursor.lockState = IsInventoryOpen ? CursorLockMode.None : CursorLockMode.Locked;
+        Cursor.visible = IsInventoryOpen;
+        
         PlayerController.Instance.LockMovement(IsInventoryOpen);
     }
 }

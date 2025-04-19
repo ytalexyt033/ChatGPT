@@ -10,17 +10,31 @@ public class PlayerController : MonoBehaviour
     public KeyCode crouchKey = KeyCode.LeftControl;
     public KeyCode inventoryKey = KeyCode.Tab;
     public KeyCode interactKey = KeyCode.E;
+    public KeyCode hotbarNextKey = KeyCode.Q;
+    public KeyCode hotbarPrevKey = KeyCode.Z;
 
-    private PlayerMovement _movement;
+    [Header("References")]
+    [SerializeField] private PlayerMovement _movement;
     private bool _isMovementLocked;
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
 
-        _movement = GetComponent<PlayerMovement>();
+        if (_movement == null)
+            _movement = GetComponent<PlayerMovement>();
+
         Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     public void LockMovement(bool state) => _isMovementLocked = state;
@@ -29,15 +43,45 @@ public class PlayerController : MonoBehaviour
     {
         if (_isMovementLocked) return;
 
-        if (Input.GetKeyDown(jumpKey) && _movement.Jump())
-        {
-            // Дополнительная логика при успешном прыжке
-        }
+        // Движение и прыжки
+        if (Input.GetKeyDown(jumpKey))
+            _movement.Jump();
 
+        // Инвентарь
         if (Input.GetKeyDown(inventoryKey))
-            InventoryUI.Instance?.ToggleInventory();
-        
+            ToggleInventory();
+
+        // Горячие клавиши хотбара
+        if (Input.GetKeyDown(hotbarNextKey))
+            Hotbar.Instance?.SelectNextSlot();
+        else if (Input.GetKeyDown(hotbarPrevKey))
+            Hotbar.Instance?.SelectPrevSlot();
+
+        // Взаимодействие
         if (Input.GetKeyDown(interactKey))
             ItemInteraction.Instance?.Interact();
+    }
+
+    private void ToggleInventory()
+    {
+        if (InventoryUI.Instance != null)
+        {
+            bool newState = !InventoryUI.Instance.IsInventoryOpen;
+            InventoryUI.Instance.ToggleInventory();
+            
+            // Дополнительные действия при открытии/закрытии
+            if (newState)
+            {
+                // Логика при открытии инвентаря
+            }
+            else
+            {
+                // Логика при закрытии инвентаря
+            }
+        }
+        else
+        {
+            Debug.LogWarning("InventoryUI instance is missing!");
+        }
     }
 }
