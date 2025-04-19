@@ -2,50 +2,35 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    private PlayerMovement playerMovement;
-    private PlayerVitals playerVitals;
+    public static PlayerController Instance { get; private set; }
 
     [Header("Input Bindings")]
-    [SerializeField] private KeyCode jumpKey = KeyCode.Space;
-    [SerializeField] private KeyCode runKey = KeyCode.LeftShift;
-    [SerializeField] private KeyCode crouchKey = KeyCode.LeftControl;
+    public KeyCode jumpKey = KeyCode.Space;
+    public KeyCode inventoryKey = KeyCode.Tab;
+
+    private PlayerMovement movement;
+    private bool isMovementLocked;
 
     private void Awake()
     {
-        playerMovement = GetComponent<PlayerMovement>();
-        playerVitals = GetComponent<PlayerVitals>();
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
 
-        if (playerMovement == null)
-        {
-            Debug.LogError("PlayerMovement component is missing on the player!");
-        }
+        movement = GetComponent<PlayerMovement>();
+    }
 
-        if (playerVitals == null)
-        {
-            Debug.LogError("PlayerVitals component is missing on the player!");
-        }
-
-        // Закрепляем и скрываем курсор
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+    public void SetMovementLock(bool state)
+    {
+        isMovementLocked = state;
     }
 
     private void Update()
     {
-        bool isRunning = Input.GetKey(runKey);
-        bool isCrouching = Input.GetKey(crouchKey);
+        if (isMovementLocked) return;
 
-        // Обработка прыжка
-        if (Input.GetKeyDown(jumpKey) && playerVitals.CanJump())
+        if (Input.GetKeyDown(jumpKey))
         {
-            playerMovement.Jump(); // Теперь метод Jump доступен
-            playerVitals.UseStamina(playerVitals.staminaJumpCost);
-        }
-
-        // Расход выносливости при беге
-        if (isRunning)
-        {
-            playerVitals.UseStamina(playerVitals.staminaRunCost * Time.deltaTime);
+            movement.Jump();
         }
     }
 }

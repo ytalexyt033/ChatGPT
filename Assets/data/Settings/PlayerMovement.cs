@@ -8,7 +8,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float runSpeed = 10f;
     [SerializeField] private float crouchSpeed = 2.5f;
     [SerializeField] private float jumpForce = 8f;
-    [SerializeField] private float gravity = 50f; // Мощная гравитация
+    [SerializeField] private float gravity = 50f;
 
     [Header("Crouch Settings")]
     [SerializeField] private float crouchHeight = 1f;
@@ -26,6 +26,7 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 _velocity;
     private float _verticalRotation;
     private bool _isCrouching;
+    private bool _isMovementLocked;
 
     private void Awake()
     {
@@ -39,34 +40,30 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
+        if (_isMovementLocked || (InventoryUI.Instance != null && InventoryUI.Instance.IsInventoryOpen))
+        {
+            _velocity.y = 0;
+            return;
+        }
+
         HandleMouseLook();
         HandleMovement();
         ApplyGravity();
-
-        if (Input.GetKeyDown(KeyCode.LeftControl))
-        {
-            _isCrouching = true;
-            _controller.height = crouchHeight;
-            _controller.center = new Vector3(0, crouchHeight / 2, 0);
-        }
-        if (Input.GetKeyUp(KeyCode.LeftControl))
-        {
-            _isCrouching = false;
-            _controller.height = standHeight;
-            _controller.center = new Vector3(0, standHeight / 2, 0);
-        }
-
+        HandleCrouch();
         UpdateCameraPosition();
+    }
+
+    public void SetMovementLock(bool state)
+    {
+        _isMovementLocked = state;
     }
 
     private void HandleMouseLook()
     {
-        // Вертикальный поворот камеры
         _verticalRotation -= Input.GetAxis("Mouse Y") * mouseSensitivity;
         _verticalRotation = Mathf.Clamp(_verticalRotation, -maxVerticalAngle, maxVerticalAngle);
         playerCamera.localEulerAngles = Vector3.right * _verticalRotation;
 
-        // Горизонтальный поворот персонажа
         transform.Rotate(Vector3.up * Input.GetAxis("Mouse X") * mouseSensitivity);
     }
 
@@ -81,23 +78,41 @@ public class PlayerMovement : MonoBehaviour
         _controller.Move(move * speed * Time.deltaTime);
     }
 
-    public void Jump() // Метод теперь публичный
+    private void HandleCrouch()
     {
-        if (_controller.isGrounded && !_isCrouching)
+        if (Input.GetKeyDown(KeyCode.LeftControl))
+        {
+            _isCrouching = true;
+            _controller.height = crouchHeight;
+            _controller.center = new Vector3(0, crouchHeight / 2, 0);
+        }
+        if (Input.GetKeyUp(KeyCode.LeftControl))
+        {
+            _isCrouching = false;
+            _controller.height = standHeight;
+            _controller.center = new Vector3(0, standHeight / 2, 0);
+        }
+    }
+
+    public bool Jump()
+    {
+        if (_controller.isGrounded && !_isCrouching && !_isMovementLocked)
         {
             _velocity.y = Mathf.Sqrt(jumpForce * 2f * gravity);
+            return true;
         }
+        return false;
     }
 
     private void ApplyGravity()
     {
         if (_controller.isGrounded && _velocity.y < 0)
         {
-            _velocity.y = -0.1f; // Сбрасываем вертикальную скорость, если игрок на земле
+            _velocity.y = -0.1f;
         }
         else
         {
-            _velocity.y -= gravity * Time.deltaTime; // Применяем гравитацию
+            _velocity.y -= gravity * Time.deltaTime;
         }
 
         _controller.Move(_velocity * Time.deltaTime);
