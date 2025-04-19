@@ -1,98 +1,107 @@
 using UnityEngine;
 
-[RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movement")]
     public float walkSpeed = 5f;
-    public float runSpeed = 8f;
-    public float jumpForce = 10f;
-    public float gravity = -20f;
-    public Transform groundCheck;
-    public LayerMask groundMask;
-    public float groundDistance = 0.4f;
+    public float runSpeed = 10f;
+    public float jumpForce = 5f;
+    public float gravity = -9.81f;
+    public float crouchHeight = 1f; // Высота при приседании
+    public float zoomFOV = 40f; // Поле зрения при зуме
 
-    [Header("Camera")]
-    public Transform playerCamera;
-    public float mouseSensitivity = 100f;
-    public float zoomFOV = 40f;
+    public Transform groundCheck;
+    public float groundDistance = 0.4f;
+    public LayerMask groundMask;
+    public Camera playerCamera;
 
     private CharacterController controller;
-    private float originalFOV;
     private Vector3 velocity;
     private bool isGrounded;
-    private float xRotation;
+    private bool isRunning;
+    private bool isCrouching;
+    private bool isZoomed;
+    private float originalHeight;
+    private float originalFOV;
 
-    private void Awake()
+    private PlayerVitals playerVitals;
+
+    private void Start()
     {
         controller = GetComponent<CharacterController>();
-        originalFOV = playerCamera.GetComponent<Camera>().fieldOfView;
-        Cursor.lockState = CursorLockMode.Locked;
-        
-        // Инициализация groundCheck если не назначен
+        playerVitals = GetComponent<PlayerVitals>();
+
+        if (controller == null)
+        {
+            Debug.LogError("CharacterController component is missing on the player!");
+        }
+
         if (groundCheck == null)
         {
-            GameObject check = new GameObject("GroundCheck");
-            check.transform.SetParent(transform);
-            check.transform.localPosition = Vector3.down * 0.9f;
-            groundCheck = check.transform;
+            Debug.LogError("GroundCheck object is not assigned in the inspector!");
         }
+
+        originalHeight = controller.height;
+        originalFOV = playerCamera.fieldOfView;
     }
 
     private void Update()
     {
-        HandleMovement();
-        HandleMouseLook();
-        HandleActions();
-    }
-
-    private void HandleMovement()
-    {
+        // Проверка, находится ли игрок на земле
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
 
         if (isGrounded && velocity.y < 0)
+        {
             velocity.y = -2f;
+        }
 
-        float moveX = Input.GetAxis("Horizontal");
-        float moveZ = Input.GetAxis("Vertical");
-
-        Vector3 move = transform.right * moveX + transform.forward * moveZ;
-        float speed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
-
-        controller.Move(move * speed * Time.deltaTime);
+        // Гравитация
         velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
     }
 
-    private void HandleMouseLook()
+    public void Move(float moveX, float moveZ, bool isRunning)
     {
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+        Vector3 move = transform.right * moveX + transform.forward * moveZ;
+        float speed = isRunning && playerVitals.CanRun() ? runSpeed : walkSpeed;
 
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-
-        playerCamera.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
-        transform.Rotate(Vector3.up * mouseX);
-    }
-
-    private void HandleActions()
-    {
-        if (Input.GetButtonDown("Jump") && isGrounded)
-            velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
-
-        if (Input.GetMouseButtonDown(1))
-            playerCamera.GetComponent<Camera>().fieldOfView = zoomFOV;
-        else if (Input.GetMouseButtonUp(1))
-            playerCamera.GetComponent<Camera>().fieldOfView = originalFOV;
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        if (groundCheck != null)
+        if (isRunning)
         {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(groundCheck.position, groundDistance);
+            playerVitals.UseStamina(playerVitals.staminaRunCost * Time.deltaTime);
         }
+
+        controller.Move(move * speed * Time.deltaTime);
+    }
+
+    public void Jump()
+    {
+        if (isGrounded && playerVitals.CanJump())
+        {
+            velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
+            playerVitals.UseStamina(playerVitals.staminaJumpCost);
+        }
+    }
+
+    public void Crouch()
+    {
+        isCrouching = true;
+        controller.height = crouchHeight;
+    }
+
+    public void StandUp()
+    {
+        isCrouching = false;
+        controller.height = originalHeight;
+    }
+
+    public void Zoom()
+    {
+        isZoomed = true;
+        playerCamera.fieldOfView = zoomFOV;
+    }
+
+    public void Unzoom()
+    {
+        isZoomed = false;
+        playerCamera.fieldOfView = originalFOV;
     }
 }

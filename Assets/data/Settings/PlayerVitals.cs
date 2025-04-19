@@ -1,39 +1,87 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerVitals : MonoBehaviour
 {
-    [Header("Stamina Settings")]
+    public float maxHP = 100f;
     public float maxStamina = 100f;
-    public float staminaRegen = 5f;
-    public float runCost = 10f; // Стамина в секунду
-    public float jumpCost = 20f;
+    public float staminaRegenRate = 5f;
+    public float staminaRunCost = 10f; // Расход выносливости при беге в секунду
+    public float staminaJumpCost = 20f; // Расход выносливости при прыжке
 
+    private float currentHP;
     private float currentStamina;
-    private bool isRunning;
 
-    private void Start() => currentStamina = maxStamina;
+    public Slider healthSlider;
+    public Slider staminaSlider;
+
+    private void Start()
+    {
+        currentHP = maxHP;
+        currentStamina = maxStamina;
+        UpdateUI();
+    }
 
     private void Update()
     {
-        if (!isRunning)
-            currentStamina = Mathf.Min(currentStamina + staminaRegen * Time.deltaTime, maxStamina);
+        // Регенерация выносливости
+        if (currentStamina < maxStamina)
+        {
+            currentStamina += staminaRegenRate * Time.deltaTime;
+            currentStamina = Mathf.Clamp(currentStamina, 0, maxStamina);
+            UpdateUI();
+        }
     }
 
-    public bool TryUseStamina(string action)
+    public void TakeDamage(float damage)
     {
-        float cost = action switch
-        {
-            "run" => runCost * Time.deltaTime,
-            "jump" => jumpCost,
-            _ => 0f
-        };
+        currentHP -= damage;
+        currentHP = Mathf.Clamp(currentHP, 0, maxHP);
+        UpdateUI();
 
-        if (currentStamina >= cost)
+        if (currentHP <= 0)
         {
-            currentStamina -= cost;
-            isRunning = action == "run";
+            Die();
+        }
+    }
+
+    public bool UseStamina(float amount)
+    {
+        if (currentStamina >= amount)
+        {
+            currentStamina -= amount;
+            UpdateUI();
             return true;
         }
         return false;
+    }
+
+    private void Die()
+    {
+        Debug.Log("Player has died!");
+        // Логика смерти (например, рестарт уровня)
+    }
+
+    private void UpdateUI()
+    {
+        if (healthSlider != null)
+        {
+            healthSlider.value = currentHP / maxHP;
+        }
+
+        if (staminaSlider != null)
+        {
+            staminaSlider.value = currentStamina / maxStamina;
+        }
+    }
+
+    public bool CanRun() // Проверка, достаточно ли выносливости для бега
+    {
+        return currentStamina > staminaRunCost * Time.deltaTime;
+    }
+
+    public bool CanJump() // Проверка, достаточно ли выносливости для прыжка
+    {
+        return currentStamina >= staminaJumpCost;
     }
 }
