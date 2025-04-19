@@ -3,49 +3,49 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     private PlayerMovement playerMovement;
+    private PlayerVitals playerVitals;
+
+    [Header("Input Bindings")]
+    [SerializeField] private KeyCode jumpKey = KeyCode.Space;
+    [SerializeField] private KeyCode runKey = KeyCode.LeftShift;
+    [SerializeField] private KeyCode crouchKey = KeyCode.LeftControl;
 
     private void Awake()
     {
         playerMovement = GetComponent<PlayerMovement>();
+        playerVitals = GetComponent<PlayerVitals>();
 
         if (playerMovement == null)
         {
             Debug.LogError("PlayerMovement component is missing on the player!");
         }
+
+        if (playerVitals == null)
+        {
+            Debug.LogError("PlayerVitals component is missing on the player!");
+        }
+
+        // Закрепляем и скрываем курсор
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     private void Update()
     {
-        // Обработка движения
-        float moveX = Input.GetAxis("Horizontal");
-        float moveZ = Input.GetAxis("Vertical");
-        bool isRunning = Input.GetKey(KeyCode.LeftShift);
-        playerMovement.Move(moveX, moveZ, isRunning);
+        bool isRunning = Input.GetKey(runKey);
+        bool isCrouching = Input.GetKey(crouchKey);
 
         // Обработка прыжка
-        if (Input.GetButtonDown("Jump"))
+        if (Input.GetKeyDown(jumpKey) && playerVitals.CanJump())
         {
-            playerMovement.Jump();
+            playerMovement.Jump(); // Теперь метод Jump доступен
+            playerVitals.UseStamina(playerVitals.staminaJumpCost);
         }
 
-        // Обработка приседания
-        if (Input.GetKeyDown(KeyCode.LeftControl))
+        // Расход выносливости при беге
+        if (isRunning)
         {
-            playerMovement.Crouch();
-        }
-        if (Input.GetKeyUp(KeyCode.LeftControl))
-        {
-            playerMovement.StandUp();
-        }
-
-        // Обработка зума камеры
-        if (Input.GetMouseButtonDown(1)) // ПКМ
-        {
-            playerMovement.Zoom();
-        }
-        if (Input.GetMouseButtonUp(1))
-        {
-            playerMovement.Unzoom();
+            playerVitals.UseStamina(playerVitals.staminaRunCost * Time.deltaTime);
         }
     }
 }

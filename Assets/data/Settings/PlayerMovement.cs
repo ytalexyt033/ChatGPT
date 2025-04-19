@@ -1,107 +1,112 @@
 using UnityEngine;
 
+[RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
-    public float walkSpeed = 5f;
-    public float runSpeed = 10f;
-    public float jumpForce = 5f;
-    public float gravity = -9.81f;
-    public float crouchHeight = 1f; // Высота при приседании
-    public float zoomFOV = 40f; // Поле зрения при зуме
+    [Header("Movement Settings")]
+    [SerializeField] private float walkSpeed = 5f;
+    [SerializeField] private float runSpeed = 10f;
+    [SerializeField] private float crouchSpeed = 2.5f;
+    [SerializeField] private float jumpForce = 8f;
+    [SerializeField] private float gravity = 50f; // Мощная гравитация
 
-    public Transform groundCheck;
-    public float groundDistance = 0.4f;
-    public LayerMask groundMask;
-    public Camera playerCamera;
+    [Header("Crouch Settings")]
+    [SerializeField] private float crouchHeight = 1f;
+    [SerializeField] private float standHeight = 2f;
+    [SerializeField] private float crouchTransitionSpeed = 8f;
 
-    private CharacterController controller;
-    private Vector3 velocity;
-    private bool isGrounded;
-    private bool isRunning;
-    private bool isCrouching;
-    private bool isZoomed;
-    private float originalHeight;
-    private float originalFOV;
+    [Header("Camera Settings")]
+    [SerializeField] private Transform playerCamera;
+    [SerializeField] private float mouseSensitivity = 2f;
+    [SerializeField] private float maxVerticalAngle = 85f;
+    [SerializeField] private float cameraStandY = 1.6f;
+    [SerializeField] private float cameraCrouchY = 0.8f;
 
-    private PlayerVitals playerVitals;
+    private CharacterController _controller;
+    private Vector3 _velocity;
+    private float _verticalRotation;
+    private bool _isCrouching;
 
-    private void Start()
+    private void Awake()
     {
-        controller = GetComponent<CharacterController>();
-        playerVitals = GetComponent<PlayerVitals>();
+        _controller = GetComponent<CharacterController>();
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
-        if (controller == null)
-        {
-            Debug.LogError("CharacterController component is missing on the player!");
-        }
-
-        if (groundCheck == null)
-        {
-            Debug.LogError("GroundCheck object is not assigned in the inspector!");
-        }
-
-        originalHeight = controller.height;
-        originalFOV = playerCamera.fieldOfView;
+        if (playerCamera == null)
+            playerCamera = Camera.main.transform;
     }
 
     private void Update()
     {
-        // Проверка, находится ли игрок на земле
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        HandleMouseLook();
+        HandleMovement();
+        ApplyGravity();
 
-        if (isGrounded && velocity.y < 0)
+        if (Input.GetKeyDown(KeyCode.LeftControl))
         {
-            velocity.y = -2f;
+            _isCrouching = true;
+            _controller.height = crouchHeight;
+            _controller.center = new Vector3(0, crouchHeight / 2, 0);
+        }
+        if (Input.GetKeyUp(KeyCode.LeftControl))
+        {
+            _isCrouching = false;
+            _controller.height = standHeight;
+            _controller.center = new Vector3(0, standHeight / 2, 0);
         }
 
-        // Гравитация
-        velocity.y += gravity * Time.deltaTime;
-        controller.Move(velocity * Time.deltaTime);
+        UpdateCameraPosition();
     }
 
-    public void Move(float moveX, float moveZ, bool isRunning)
+    private void HandleMouseLook()
     {
-        Vector3 move = transform.right * moveX + transform.forward * moveZ;
-        float speed = isRunning && playerVitals.CanRun() ? runSpeed : walkSpeed;
+        // Вертикальный поворот камеры
+        _verticalRotation -= Input.GetAxis("Mouse Y") * mouseSensitivity;
+        _verticalRotation = Mathf.Clamp(_verticalRotation, -maxVerticalAngle, maxVerticalAngle);
+        playerCamera.localEulerAngles = Vector3.right * _verticalRotation;
 
-        if (isRunning)
+        // Горизонтальный поворот персонажа
+        transform.Rotate(Vector3.up * Input.GetAxis("Mouse X") * mouseSensitivity);
+    }
+
+    private void HandleMovement()
+    {
+        float moveX = Input.GetAxis("Horizontal");
+        float moveZ = Input.GetAxis("Vertical");
+
+        Vector3 move = transform.TransformDirection(new Vector3(moveX, 0, moveZ));
+        float speed = _isCrouching ? crouchSpeed : Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
+
+        _controller.Move(move * speed * Time.deltaTime);
+    }
+
+    public void Jump() // Метод теперь публичный
+    {
+        if (_controller.isGrounded && !_isCrouching)
         {
-            playerVitals.UseStamina(playerVitals.staminaRunCost * Time.deltaTime);
+            _velocity.y = Mathf.Sqrt(jumpForce * 2f * gravity);
+        }
+    }
+
+    private void ApplyGravity()
+    {
+        if (_controller.isGrounded && _velocity.y < 0)
+        {
+            _velocity.y = -0.1f; // Сбрасываем вертикальную скорость, если игрок на земле
+        }
+        else
+        {
+            _velocity.y -= gravity * Time.deltaTime; // Применяем гравитацию
         }
 
-        controller.Move(move * speed * Time.deltaTime);
+        _controller.Move(_velocity * Time.deltaTime);
     }
 
-    public void Jump()
+    private void UpdateCameraPosition()
     {
-        if (isGrounded && playerVitals.CanJump())
-        {
-            velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);
-            playerVitals.UseStamina(playerVitals.staminaJumpCost);
-        }
-    }
-
-    public void Crouch()
-    {
-        isCrouching = true;
-        controller.height = crouchHeight;
-    }
-
-    public void StandUp()
-    {
-        isCrouching = false;
-        controller.height = originalHeight;
-    }
-
-    public void Zoom()
-    {
-        isZoomed = true;
-        playerCamera.fieldOfView = zoomFOV;
-    }
-
-    public void Unzoom()
-    {
-        isZoomed = false;
-        playerCamera.fieldOfView = originalFOV;
+        float targetY = _isCrouching ? cameraCrouchY : cameraStandY;
+        Vector3 targetPos = new Vector3(transform.position.x, transform.position.y + targetY, transform.position.z);
+        playerCamera.position = Vector3.Lerp(playerCamera.position, targetPos, crouchTransitionSpeed * Time.deltaTime);
     }
 }
