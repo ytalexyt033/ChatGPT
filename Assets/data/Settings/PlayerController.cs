@@ -29,21 +29,15 @@ public class PlayerController : MonoBehaviour
     {
         if (_isMovementLocked) return;
 
-        // Обработка прыжка
-        if (Input.GetKeyDown(jumpKey)) 
-            _movement.Jump();
+        if (Input.GetKeyDown(jumpKey) && _movement.Jump())
+        {
+            // Дополнительная логика при успешном прыжке
+        }
 
-        // Обработка приседания
-        if (Input.GetKeyDown(crouchKey))
-            _movement.ToggleCrouch(true);
-        else if (Input.GetKeyUp(crouchKey))
-            _movement.ToggleCrouch(false);
-
-        // Другие действия
-        if (Input.GetKeyDown(inventoryKey)) 
+        if (Input.GetKeyDown(inventoryKey))
             InventoryUI.Instance?.ToggleInventory();
         
-        if (Input.GetKeyDown(interactKey)) 
+        if (Input.GetKeyDown(interactKey))
             ItemInteraction.Instance?.Interact();
     }
 }
