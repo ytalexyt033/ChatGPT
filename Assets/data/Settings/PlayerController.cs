@@ -1,50 +1,109 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(PlayerInput), typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 5f;
+    public float walkSpeed = 5f;
+    public float runSpeed = 8f;
+    public float crouchSpeed = 2.5f;
     public float jumpForce = 10f;
-    
-    private Rigidbody rb;
-    private PlayerInput playerInput;
-    private InputAction moveAction;
-    private InputAction jumpAction;
+    public float mouseSensitivity = 100f;
+    public float zoomFOV = 30f;
 
-    void Awake()
+    [Header("References")]
+    public Transform playerCamera;
+    public PlayerVitals vitals;
+
+    private CharacterController controller;
+    private float defaultFOV;
+    private float xRotation;
+    private bool isCrouching;
+    private bool isZooming;
+
+    private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        playerInput = GetComponent<PlayerInput>();
-        
-        // Инициализация Input Actions
-        moveAction = playerInput.actions["Move"];
-        jumpAction = playerInput.actions["Jump"];
+        controller = GetComponent<CharacterController>();
+        defaultFOV = playerCamera.GetComponent<Camera>().fieldOfView;
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
-    void Update()
+    private void Update()
     {
-        // Движение
-        Vector2 input = moveAction.ReadValue<Vector2>();
-        Vector3 moveDir = new Vector3(input.x, 0, input.y) * moveSpeed;
-        rb.velocity = new Vector3(moveDir.x, rb.velocity.y, moveDir.z);
+        HandleMovement();
+        HandleLook();
+        HandleActions();
+    }
 
-        // Прыжок
-        if (jumpAction.triggered && IsGrounded())
+    private void HandleMovement()
+    {
+        float moveX = Input.GetAxis("Horizontal");
+        float moveZ = Input.GetAxis("Vertical");
+
+        Vector3 move = transform.right * moveX + transform.forward * moveZ;
+        float speed = GetTargetSpeed();
+        
+        controller.Move(move * speed * Time.deltaTime);
+    }
+
+    private float GetTargetSpeed()
+    {
+        if (Input.GetKey(KeyCode.LeftControl))
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            isCrouching = true;
+            return crouchSpeed;
+        }
+        
+        isCrouching = false;
+
+        if (Input.GetKey(KeyCode.LeftShift) && vitals.TryUseStamina("run"))
+            return runSpeed;
+
+        return walkSpeed;
+    }
+
+    private void HandleLook()
+    {
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+
+        playerCamera.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        transform.Rotate(Vector3.up * mouseX);
+    }
+
+    private void HandleActions()
+    {
+        // Прыжок
+        if (Input.GetKeyDown(KeyCode.Space) 
+            TryJump();
+
+        // Прицеливание
+        if (Input.GetMouseButtonDown(1))
+            StartZoom();
+        else if (Input.GetMouseButtonUp(1)) 
+            StopZoom();
+    }
+
+    private void TryJump()
+    {
+        if (controller.isGrounded && vitals.TryUseStamina("jump"))
+        {
+            float jumpVelocity = Mathf.Sqrt(jumpForce * -2f * Physics.gravity.y);
+            controller.Move(Vector3.up * jumpVelocity * Time.deltaTime);
         }
     }
 
-    bool IsGrounded()
+    private void StartZoom()
     {
-        return Physics.Raycast(transform.position, Vector3.down, 0.1f);
+        isZooming = true;
+        playerCamera.GetComponent<Camera>().fieldOfView = zoomFOV;
     }
 
-    void OnDrawGizmosSelected()
+    private void StopZoom()
     {
-        Gizmos.color = Color.red;
-        Gizmos.DrawRay(transform.position, Vector3.down * 0.1f);
+        isZooming = false;
+        playerCamera.GetComponent<Camera>().fieldOfView = defaultFOV;
     }
 }

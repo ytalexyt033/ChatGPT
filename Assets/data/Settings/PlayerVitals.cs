@@ -2,57 +2,38 @@ using UnityEngine;
 
 public class PlayerVitals : MonoBehaviour
 {
-    [Header("Health Settings")]
-    [SerializeField] private float maxHealth = 100f;
-    [SerializeField] private float healthRegenRate = 1f;
-    
     [Header("Stamina Settings")]
-    [SerializeField] private float maxStamina = 100f;
-    [SerializeField] private float staminaRegenRate = 2f;
-    [SerializeField] private float runStaminaCost = 10f;
-    [SerializeField] private float jumpStaminaCost = 20f;
+    public float maxStamina = 100f;
+    public float staminaRegen = 5f;
+    public float runCost = 10f; // Стамина в секунду
+    public float jumpCost = 20f;
 
-    private float _currentHealth;
-    private float _currentStamina;
-    private bool _isRunning;
+    private float currentStamina;
+    private bool isRunning;
 
-    public float Health => _currentHealth;
-    public float Stamina => _currentStamina;
-    public bool HasStaminaForRun => _currentStamina > runStaminaCost;
-
-    private void Awake()
-    {
-        _currentHealth = maxHealth;
-        _currentStamina = maxStamina;
-    }
+    private void Start() => currentStamina = maxStamina;
 
     private void Update()
     {
-        if (_isRunning)
-        {
-            _currentStamina -= runStaminaCost * Time.deltaTime;
-        }
-        else
-        {
-            _currentStamina += staminaRegenRate * Time.deltaTime;
-        }
-
-        _currentStamina = Mathf.Clamp(_currentStamina, 0, maxStamina);
-        _currentHealth = Mathf.Clamp(_currentHealth + healthRegenRate * Time.deltaTime, 0, maxHealth);
+        if (!isRunning)
+            currentStamina = Mathf.Min(currentStamina + staminaRegen * Time.deltaTime, maxStamina);
     }
 
-    public bool TryUseJumpStamina()
+    public bool TryUseStamina(string action)
     {
-        if (_currentStamina >= jumpStaminaCost)
+        float cost = action switch
         {
-            _currentStamina -= jumpStaminaCost;
+            "run" => runCost * Time.deltaTime,
+            "jump" => jumpCost,
+            _ => 0f
+        };
+
+        if (currentStamina >= cost)
+        {
+            currentStamina -= cost;
+            isRunning = action == "run";
             return true;
         }
         return false;
-    }
-
-    public void SetRunning(bool isRunning)
-    {
-        _isRunning = isRunning;
     }
 }
