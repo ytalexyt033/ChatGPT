@@ -3,31 +3,14 @@ using UnityEngine;
 
 public class ItemDatabase : MonoBehaviour
 {
-    public static ItemDatabase Instance;
+    public static ItemDatabase Instance { get; private set; }
     public List<Item> items = new List<Item>();
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-
-        // Инициализация предметов
-        items.Add(new Item {
-            id = 0,
-            itemName = "Stone",
-            itemType = Item.ItemType.Block
-        });
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
-    public Item GetItem(int id)
-    {
-        return items.Find(item => item.id == id);
-    }
+    public Item GetItem(int id) => items.Find(item => item.id == id);
 }

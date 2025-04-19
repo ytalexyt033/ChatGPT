@@ -3,7 +3,7 @@ using UnityEngine;
 public class Hotbar : MonoBehaviour
 {
     public static Hotbar Instance { get; private set; }
-    public int CurrentSlot { get; private set; } = 0;
+    public int CurrentSlot { get; private set; }
     public int size = 5;
 
     private void Awake()

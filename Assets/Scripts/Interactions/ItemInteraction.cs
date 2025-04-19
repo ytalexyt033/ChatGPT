@@ -2,29 +2,25 @@ using UnityEngine;
 
 public class ItemInteraction : MonoBehaviour
 {
-    [SerializeField] private float interactDistance = 5f;
+    public static ItemInteraction Instance { get; private set; }
+
+    [SerializeField] private float interactDistance = 3f;
     [SerializeField] private LayerMask interactableLayers;
 
     private Camera _camera;
 
+    private void Awake()
+    {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
+
     private void Start() => _camera = Camera.main;
 
-    private void Update()
+    public void Interact()
     {
-        if (Input.GetMouseButtonDown(0)) UseItem();
-        if (Input.GetMouseButtonDown(1)) Interact();
-    }
-
-    private void UseItem()
-    {
-        var item = InventorySystem.Instance?.GetHotbarItem(Hotbar.Instance.CurrentSlot);
-        item?.Use();
-    }
-
-    private void Interact()
-    {
-        var ray = _camera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out var hit, interactDistance, interactableLayers))
+        Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactableLayers))
             Debug.Log($"Interacted with {hit.collider.name}");
     }
 }
